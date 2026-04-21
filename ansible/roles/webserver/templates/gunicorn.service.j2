@@ -1,0 +1,17 @@
+[Unit]
+Description=Gunicorn service for library management portal
+After=network.target
+
+[Service]
+User=apache
+Group=apache
+WorkingDirectory={{ app_root }}
+EnvironmentFile=/etc/library-portal.env
+ExecStart={{ app_root }}/venv/bin/gunicorn --workers {{ gunicorn_workers }} --bind 127.0.0.1:{{ app_port }} wsgi:app
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/library-portal/gunicorn.log
+StandardError=append:/var/log/library-portal/gunicorn-error.log
+
+[Install]
+WantedBy=multi-user.target

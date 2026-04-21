@@ -1,0 +1,7 @@
+---
+app_name: library-portal
+app_root: /var/www/html/library-portal
+app_port: 5000
+gunicorn_workers: 2
+aws_region: ap-south-1
+cloudwatch_log_group: /library-devsecops/apache

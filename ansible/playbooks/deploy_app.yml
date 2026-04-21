@@ -1,0 +1,54 @@
+---
+- name: Deploy library portal to selected target group
+  hosts: web
+  become: true
+  tasks:
+    - name: Ensure application directory exists
+      ansible.builtin.file:
+        path: "{{ app_root }}"
+        state: directory
+        owner: apache
+        group: apache
+        mode: "0755"
+
+    - name: Copy application source code
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../app/"
+        dest: "{{ app_root }}/"
+        owner: apache
+        group: apache
+        mode: "0644"
+        directory_mode: "0755"
+      notify:
+        - restart gunicorn
+        - restart apache
+
+    - name: Create Python virtual environment dependencies
+      ansible.builtin.pip:
+        requirements: "{{ app_root }}/requirements.txt"
+        virtualenv: "{{ app_root }}/venv"
+        virtualenv_command: python3 -m venv
+      notify:
+        - restart gunicorn
+
+    - name: Render environment file
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../roles/webserver/templates/library-portal.env.j2"
+        dest: /etc/library-portal.env
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - restart gunicorn
+
+  handlers:
+    - name: restart gunicorn
+      ansible.builtin.systemd:
+        name: library-portal
+        state: restarted
+        daemon_reload: true
+
+    - name: restart apache
+      ansible.builtin.systemd:
+        name: httpd
+        state: restarted

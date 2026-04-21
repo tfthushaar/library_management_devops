@@ -1,0 +1,76 @@
+---
+- name: Install required system packages
+  ansible.builtin.yum:
+    name:
+      - httpd
+      - python3
+      - python3-pip
+      - git
+      - amazon-cloudwatch-agent
+    state: present
+
+- name: Create application directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: apache
+    group: apache
+    mode: "0755"
+  loop:
+    - "{{ app_root }}"
+    - /var/log/library-portal
+
+- name: Deploy Apache virtual host configuration
+  ansible.builtin.template:
+    src: apache-library.conf.j2
+    dest: /etc/httpd/conf.d/library-portal.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart apache
+
+- name: Deploy Gunicorn systemd service
+  ansible.builtin.template:
+    src: gunicorn.service.j2
+    dest: /etc/systemd/system/library-portal.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart gunicorn
+
+- name: Render environment file
+  ansible.builtin.template:
+    src: library-portal.env.j2
+    dest: /etc/library-portal.env
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart gunicorn
+
+- name: Configure CloudWatch agent
+  ansible.builtin.template:
+    src: cloudwatch-agent.json.j2
+    dest: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart cloudwatch agent
+
+- name: Enable and start Apache
+  ansible.builtin.systemd:
+    name: httpd
+    enabled: true
+    state: started
+
+- name: Enable library portal service
+  ansible.builtin.systemd:
+    name: library-portal
+    enabled: true
+    state: stopped
+    daemon_reload: true
+
+- name: Enable and start CloudWatch agent
+  ansible.builtin.systemd:
+    name: amazon-cloudwatch-agent
+    enabled: true
+    state: started

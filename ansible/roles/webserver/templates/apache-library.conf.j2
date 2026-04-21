@@ -1,0 +1,16 @@
+ServerTokens Prod
+ServerSignature Off
+
+<VirtualHost *:80>
+    ServerName _
+    DocumentRoot /var/www/html
+
+    ProxyPreserveHost On
+    ProxyPass /health http://127.0.0.1:{{ app_port }}/health
+    ProxyPassReverse /health http://127.0.0.1:{{ app_port }}/health
+    ProxyPass / http://127.0.0.1:{{ app_port }}/
+    ProxyPassReverse / http://127.0.0.1:{{ app_port }}/
+
+    ErrorLog /var/log/httpd/library-portal-error.log
+    CustomLog /var/log/httpd/library-portal-access.log combined
+</VirtualHost>

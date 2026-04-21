@@ -1,0 +1,7 @@
+---
+- name: Configure blue and green web servers
+  hosts: web
+  become: true
+  roles:
+    - webserver
+

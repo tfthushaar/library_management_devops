@@ -1,0 +1,17 @@
+aws_region        = "ap-south-1"
+project_name      = "library-devsecops"
+vpc_id            = "vpc-REPLACE_ME"
+public_subnet_ids = ["subnet-REPLACE_BLUE", "subnet-REPLACE_GREEN"]
+ami_id            = "ami-REPLACE_WITH_AMAZON_LINUX_2"
+instance_type     = "t2.micro"
+key_pair_name     = "REPLACE_WITH_YOUR_KEY_PAIR"
+allowed_ssh_cidr  = "0.0.0.0/0"
+active_target     = "blue"
+
+# Optional. Leave empty if you want HTTP only for the demo.
+certificate_arn = ""
+
+environment_tags = {
+  Owner      = "YOUR_NAME"
+  Department = "MCA-Project"
+}

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Library Management Portal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+  </head>
+  <body>
+    <div class="scene-glow scene-glow-left"></div>
+    <div class="scene-glow scene-glow-right"></div>
+
+    <main class="page-shell">
+      <section class="hero-panel">
+        <div class="hero-copy">
+          <p class="eyebrow">Automated Secure Deployment</p>
+          <h1>Library Management Web Portal</h1>
+          <p class="description">
+            A DevSecOps-ready academic project with catalog management, issue and return workflows,
+            CloudWatch observability, Jenkins blue-green deployment, and mandatory OWASP ZAP validation.
+          </p>
+          <div class="hero-pills">
+            <span class="pill">Current slot: {{ app_environment }}</span>
+            <span class="pill">ALB health path: /health</span>
+            <span class="pill">Security headers enabled</span>
+          </div>
+        </div>
+
+        <aside class="deployment-card">
+          <h2>Pipeline Snapshot</h2>
+          <ol>
+            <li>Build and test the Flask portal.</li>
+            <li>Run OWASP ZAP baseline scan before deployment.</li>
+            <li>Deploy to Green and verify `/health` locally on the target host.</li>
+            <li>Switch ALB traffic and roll back to Blue if validation fails.</li>
+          </ol>
+        </aside>
+      </section>
+
+      <section class="stats-grid" id="stats-grid">
+        <article class="stat-card">
+          <span class="stat-label">Total Books</span>
+          <strong id="stat-total-books">0</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Available Copies</span>
+          <strong id="stat-available-copies">0</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Borrowed Copies</span>
+          <strong id="stat-borrowed-copies">0</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Active Members</span>
+          <strong id="stat-active-members">0</strong>
+        </article>
+      </section>
+
+      <section class="workspace-grid">
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Catalog Control</p>
+              <h2>Add a Book</h2>
+            </div>
+            <span class="badge">POST /api/books</span>
+          </div>
+          <form id="add-book-form" class="stack-form">
+            <label>
+              <span>Title</span>
+              <input id="title" name="title" type="text" maxlength="80" placeholder="The Phoenix Project" required />
+            </label>
+            <label>
+              <span>Author</span>
+              <input id="author" name="author" type="text" maxlength="60" placeholder="Gene Kim" required />
+            </label>
+            <label>
+              <span>ISBN</span>
+              <input id="isbn" name="isbn" type="text" maxlength="17" placeholder="978-1942788294" required />
+            </label>
+            <label>
+              <span>Category</span>
+              <input id="category" name="category" type="text" maxlength="40" placeholder="DevOps" required />
+            </label>
+            <label>
+              <span>Copies</span>
+              <input id="copies" name="copies" type="number" min="1" max="25" value="2" required />
+            </label>
+            <button type="submit">Add to Catalog</button>
+          </form>
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Circulation</p>
+              <h2>Issue a Book</h2>
+            </div>
+            <span class="badge">POST /borrow</span>
+          </div>
+          <form id="borrow-form" class="stack-form">
+            <label>
+              <span>Book</span>
+              <select id="borrow-book-id" name="book_id" required></select>
+            </label>
+            <label>
+              <span>Member Name</span>
+              <input id="member-name" name="member_name" type="text" maxlength="60" placeholder="Asha Nair" required />
+            </label>
+            <button type="submit">Issue Book</button>
+          </form>
+
+          <div class="active-loans">
+            <div class="panel-header compact">
+              <h3>Active Loans</h3>
+              <span class="badge muted">GET /api/loans</span>
+            </div>
+            <div id="loan-list" class="loan-list"></div>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header panel-header-wrap">
+          <div>
+            <p class="eyebrow">Catalog Explorer</p>
+            <h2>Search, monitor, and return books</h2>
+          </div>
+          <div class="search-strip">
+            <input id="search-query" type="search" maxlength="60" placeholder="Search by title, author, category, or ISBN" />
+            <button id="search-button" type="button">Search</button>
+            <button id="reset-button" type="button" class="ghost-button">Reset</button>
+          </div>
+        </div>
+
+        <div id="message" class="message info">Portal ready. Add books, issue them to members, and re-test through Jenkins after deployment.</div>
+
+        <div class="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Category</th>
+                <th>ISBN</th>
+                <th>Copies</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="catalog-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  </body>
+</html>
