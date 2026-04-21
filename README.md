@@ -186,6 +186,59 @@ aws sts get-caller-identity
 
 If this works, your AWS CLI is correctly configured.
 
+### 6.4 AWS Console pages you will use most
+
+If you are completely new to AWS, these are the exact services you will open during this project:
+
+1. `IAM`
+   Used for:
+   - creating your project user
+   - creating access keys
+   - understanding permissions
+2. `VPC`
+   Used for:
+   - viewing or creating the VPC
+   - viewing subnets
+   - viewing route tables
+   - viewing the Internet Gateway
+3. `EC2`
+   Used for:
+   - creating the key pair
+   - launching the Jenkins server
+   - checking Blue and Green instances
+   - checking security groups
+4. `CloudWatch`
+   Used for:
+   - checking logs
+   - checking dashboards
+5. `Load Balancers`
+   This is inside EC2 and used for:
+   - checking the ALB
+   - checking target groups
+
+### 6.5 Recommended region choice
+
+For this project, stay in one region from start to finish.
+
+If you use:
+
+```text
+ap-south-1
+```
+
+then all of these must also be in `ap-south-1`:
+
+- VPC
+- subnets
+- AMI
+- Jenkins EC2
+- Blue EC2
+- Green EC2
+- ALB
+- CloudWatch resources
+
+Do not mix resources from different regions.
+
 ## 7. Step 2: Understand the AWS Network Pieces First
 
 This is the part beginners usually find confusing, so here is the simplest explanation.
@@ -369,6 +422,63 @@ Make sure:
 - both are in the same region as your project
 - route table allows internet access
 
+### 8.1 Exact click-by-click: create a beginner-friendly VPC
+
+If you do not already have a VPC ready, do this:
+
+1. In AWS Console search bar, type `VPC`
+2. Open the `VPC` service
+3. In the left menu, click `Your VPCs`
+4. Click `Create VPC`
+5. Choose the option that creates `VPC and more`
+6. Fill in:
+   - Name tag: `library-devsecops-vpc`
+   - IPv4 CIDR block: leave the default unless your lab requires something specific
+   - Number of Availability Zones: `2`
+   - Number of public subnets: `2`
+   - Number of private subnets: `0` for this beginner setup
+   - NAT gateways: `None`
+   - VPC endpoints: `None`
+7. Click `Create VPC`
+
+After creation, AWS will usually create:
+
+- 1 VPC
+- 2 public subnets
+- 1 Internet Gateway
+- route tables
+
+### 8.2 Exact click-by-click: confirm the subnets are public
+
+1. Open `VPC`
+2. Click `Subnets`
+3. Click your first subnet
+4. Check the `Route table` tab or route table association
+5. Confirm there is a route:
+   - Destination: `0.0.0.0/0`
+   - Target: `igw-...`
+6. Repeat for the second subnet
+
+If you see that route, the subnet is public.
+
+### 8.3 Exact click-by-click: confirm the Internet Gateway
+
+1. Open `VPC`
+2. Click `Internet gateways`
+3. Confirm one Internet Gateway is attached to your VPC
+
+If no Internet Gateway is attached, the ALB and public access will not work correctly.
+
+### 8.4 Exact click-by-click: record the VPC and subnet IDs
+
+Write these down in a notepad before you continue:
+
+- VPC ID: `vpc-________________`
+- Public Subnet 1 ID: `subnet-________________`
+- Public Subnet 2 ID: `subnet-________________`
+- Availability Zone for subnet 1: `________________`
+- Availability Zone for subnet 2: `________________`
+
 ## 9. Step 4: Create an EC2 Key Pair
 
 1. Open the EC2 service.
@@ -397,6 +507,69 @@ Important:
 
 - AMI IDs are region-specific
 - Use the AMI for the same region as your VPC and subnets
+
+### 10.1 Exact click-by-click: find the AMI ID
+
+1. Open `EC2`
+2. Click `Launch instance`
+3. In the AMI selection area, search for `Amazon Linux 2`
+4. Choose the official Amazon Linux 2 AMI
+5. Click into the AMI details if needed
+6. Copy the `AMI ID`
+7. Cancel the launch if you are only collecting the AMI for Terraform right now
+
+Write down:
+
+- Amazon Linux 2 AMI ID: `ami-________________`
+
+## 11. Step 5.5: Pre-Terraform Fill-In Worksheet
+
+Before you edit `terraform.tfvars`, pause and fill this section out completely.
+
+### 11.1 AWS values you must collect first
+
+- AWS Region: `________________`
+- VPC ID: `________________`
+- Public Subnet 1 ID: `________________`
+- Public Subnet 2 ID: `________________`
+- Amazon Linux 2 AMI ID: `________________`
+- EC2 key pair name: `________________`
+- Your public IP for SSH access: `________________`
+- Optional ACM certificate ARN for HTTPS: `________________`
+
+### 11.2 How to find your public IP
+
+Open a browser and search:
+
+```text
+what is my ip
+```
+
+If the browser shows something like:
+
+```text
+49.36.10.20
+```
+
+then the Terraform value becomes:
+
+```hcl
+allowed_ssh_cidr = "49.36.10.20/32"
+```
+
+### 11.3 Final pre-Terraform checklist
+
+Do not run Terraform until all of these are true:
+
+- AWS CLI works
+- region is decided
+- VPC exists
+- 2 public subnets exist
+- Internet Gateway exists
+- route table makes the subnets public
+- key pair exists
+- AMI ID is collected
+- your public IP is known
 
 ## 11. Step 6: Fill Terraform Variables
 
@@ -436,6 +609,50 @@ What each field means:
 - `allowed_ssh_cidr`: who can SSH to EC2
 - `active_target`: live environment at the start
 - `certificate_arn`: ACM certificate if using HTTPS
+
+### 11.1 Exact file you need to create
+
+In the `terraform` folder:
+
+1. Copy `terraform.tfvars.example`
+2. Rename the copy to:
+
+```text
+terraform.tfvars
+```
+
+Terraform will automatically read `terraform.tfvars` when you run `terraform plan` and `terraform apply`.
+
+### 11.2 Full example you can copy and then replace
+
+```hcl
+aws_region        = "ap-south-1"
+project_name      = "library-devsecops"
+vpc_id            = "vpc-REPLACE_ME"
+public_subnet_ids = ["subnet-REPLACE_BLUE", "subnet-REPLACE_GREEN"]
+ami_id            = "ami-REPLACE_ME"
+instance_type     = "t2.micro"
+key_pair_name     = "REPLACE_WITH_YOUR_KEY_PAIR"
+allowed_ssh_cidr  = "REPLACE_WITH_YOUR_PUBLIC_IP/32"
+active_target     = "blue"
+certificate_arn   = ""
+
+environment_tags = {
+  Owner      = "YOUR_NAME"
+  Department = "MCA-Project"
+}
+```
+
+### 11.3 What not to leave as placeholders
+
+Before you continue, make sure you replaced:
+
+- `vpc-REPLACE_ME`
+- `subnet-REPLACE_BLUE`
+- `subnet-REPLACE_GREEN`
+- `ami-REPLACE_ME`
+- key pair name
+- your public IP
 
 ## 12. Step 7: Run Terraform
 
@@ -501,6 +718,37 @@ Security group for Jenkins should allow:
 
 - SSH `22` from your own IP
 - Jenkins UI `8080` from your own IP
+
+### 13.1.1 Exact click-by-click: launch Jenkins Ubuntu EC2
+
+1. Open `EC2`
+2. Click `Launch instance`
+3. In `Name`, enter:
+
+```text
+jenkins-server
+```
+
+4. Under `Application and OS Images`, choose:
+   - `Ubuntu Server 22.04 LTS` or another current Ubuntu LTS
+5. Under `Instance type`, choose:
+   - `t2.micro` or `t3.micro`
+6. Under `Key pair`, select your key pair
+7. Under `Network settings`, click `Edit`
+8. Choose:
+   - your project VPC
+   - one public subnet
+   - auto-assign public IP enabled
+9. Create or select a security group with:
+   - SSH `22` from `YOUR_IP/32`
+   - Custom TCP `8080` from `YOUR_IP/32`
+10. Click `Launch instance`
+
+### 13.1.2 Values to write down after Jenkins EC2 launch
+
+- Jenkins EC2 public IP: `________________`
+- Jenkins EC2 private IP: `________________`
+- Jenkins security group ID: `________________`
 
 ### 13.2 SSH into Jenkins EC2
 
@@ -612,6 +860,59 @@ sudo chmod 400 /var/lib/jenkins/.ssh/library-bluegreen.pem
 
 This matches the default path in [Jenkinsfile](./Jenkinsfile).
 
+### 14.8 Copy-paste command block for a fresh Jenkins Ubuntu server
+
+If you want the shortest possible setup path, these are the commands to run on the Jenkins Ubuntu EC2 in order.
+
+```bash
+sudo apt update
+sudo apt install -y fontconfig openjdk-17-jre
+
+curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/ | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+
+sudo apt update
+sudo apt install -y jenkins git python3 python3-venv python3-pip ansible unzip docker.io
+
+sudo systemctl enable jenkins
+sudo systemctl start jenkins
+sudo systemctl enable docker
+sudo systemctl start docker
+sudo usermod -aG docker jenkins
+
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+sudo mkdir -p /var/lib/jenkins/.ssh
+sudo chown -R jenkins:jenkins /var/lib/jenkins/.ssh
+
+sudo systemctl restart jenkins
+```
+
+After that, you still need to do these manual steps:
+
+1. Run `aws configure`
+2. Copy your `.pem` file to `/var/lib/jenkins/.ssh/library-bluegreen.pem`
+3. Set permissions:
+
+```bash
+sudo chown jenkins:jenkins /var/lib/jenkins/.ssh/library-bluegreen.pem
+sudo chmod 400 /var/lib/jenkins/.ssh/library-bluegreen.pem
+```
+
+4. Open Jenkins in browser:
+
+```text
+http://JENKINS_PUBLIC_IP:8080
+```
+
+5. Get the unlock password:
+
+```bash
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+```
+
 ## 15. Step 10: Put the Project in GitHub
 
 If your code is not already on GitHub, create a GitHub repository and push the project there.
@@ -647,6 +948,24 @@ Use the public IPs from:
 - `blue_instance_public_ip`
 - `green_instance_public_ip`
 
+### 16.1 Exact final inventory example
+
+When you finish editing, your inventory should look like this shape:
+
+```ini
+[blue]
+blue ansible_host=15.206.171.192 ansible_user=ec2-user app_slot=blue
+
+[green]
+green ansible_host=13.204.42.9 ansible_user=ec2-user app_slot=green
+
+[web:children]
+blue
+green
+```
+
+Use your own Terraform outputs, not these example IPs.
+
 ## 17. Step 12: Test SSH to Blue and Green
 
 From your Linux machine or Jenkins server:
@@ -679,6 +998,20 @@ This installs and configures:
 - Gunicorn
 - CloudWatch agent
 - library-portal service
+
+### 18.1 Exact beginner order for Ansible commands
+
+Run these one by one from the Jenkins server or another Linux machine:
+
+```bash
+cd /path/to/library-management-system
+ansible --version
+ansible -i ansible/inventory/inventory.ini all -m ping --private-key /path/to/your-key.pem
+ansible-playbook -i ansible/inventory/inventory.ini ansible/playbooks/setup_web.yml --private-key /path/to/your-key.pem
+ansible-playbook -i ansible/inventory/inventory.ini ansible/playbooks/deploy_app.yml --limit blue --private-key /path/to/your-key.pem
+```
+
+The last command is optional before Jenkins, but it is useful if you want to test one server manually first.
 
 ## 19. Step 14: Understand CloudWatch in This Project
 
@@ -734,6 +1067,18 @@ Jenkinsfile
 
 Save the job.
 
+### 20.1 Exact values to enter in Jenkins job setup
+
+Use:
+
+- Definition: `Pipeline script from SCM`
+- SCM: `Git`
+- Repository URL: your GitHub repo URL
+- Branch Specifier: `*/master` if your branch is `master`
+- Script Path: `Jenkinsfile`
+
+If Jenkins asks for Git credentials and the repo is public, you usually do not need credentials.
+
 ## 21. Step 16: Run the Jenkins Pipeline
 
 When you click **Build with Parameters**, enter:
@@ -751,6 +1096,32 @@ Example:
 - `ANSIBLE_PRIVATE_KEY_FILE = /var/lib/jenkins/.ssh/library-bluegreen.pem`
 
 The values for the ALB and target groups come from Terraform outputs.
+
+### 21.0 Quick parameter worksheet
+
+Before clicking `Build with Parameters`, collect and fill these:
+
+- `AWS_REGION = ____________________`
+- `ALB_LISTENER_ARN = ____________________`
+- `BLUE_TARGET_GROUP_ARN = ____________________`
+- `GREEN_TARGET_GROUP_ARN = ____________________`
+- `ALB_DNS_NAME = ____________________`
+- `ANSIBLE_PRIVATE_KEY_FILE = /var/lib/jenkins/.ssh/library-bluegreen.pem`
+
+### 21.0.1 Where each Jenkins parameter comes from
+
+- `AWS_REGION`
+  From your chosen AWS region, for example `ap-south-1`
+- `ALB_LISTENER_ARN`
+  From Terraform output `listener_arn`
+- `BLUE_TARGET_GROUP_ARN`
+  From Terraform output `blue_target_group_arn`
+- `GREEN_TARGET_GROUP_ARN`
+  From Terraform output `green_target_group_arn`
+- `ALB_DNS_NAME`
+  From Terraform output `alb_dns_name`
+- `ANSIBLE_PRIVATE_KEY_FILE`
+  The path where you stored the `.pem` key on Jenkins
 
 ### 21.1 What each Jenkins stage does
 
@@ -792,6 +1163,13 @@ Example:
 ```text
 http://ALB_DNS_NAME/health
 ```
+
+Expected `/health` response should be JSON with:
+
+- `status`
+- `application`
+- `environment`
+- `summary`
 
 ## 23. Step 18: Run OWASP ZAP
 
@@ -923,6 +1301,15 @@ Check:
 - key pair name
 - region mismatch
 
+Also run:
+
+```bash
+terraform validate
+terraform plan
+```
+
+and read the first error line carefully. Terraform usually tells you exactly which value is wrong.
+
 ### SSH fails
 
 Check:
@@ -931,6 +1318,13 @@ Check:
 - correct `.pem`
 - correct username
 - correct public IP
+
+Also verify:
+
+```bash
+chmod 400 /path/to/your-key.pem
+ssh -i /path/to/your-key.pem ec2-user@BLUE_PUBLIC_IP
+```
 
 ### Ansible fails
 
@@ -956,6 +1350,14 @@ Check:
 - EC2 IAM role is attached
 - `amazon-cloudwatch-agent` service is running
 - expected log files actually exist
+
+Useful commands on Blue or Green:
+
+```bash
+sudo systemctl status amazon-cloudwatch-agent
+sudo ls -l /var/log/httpd/
+sudo ls -l /var/log/library-portal/
+```
 
 ### Green verification fails
 
@@ -988,7 +1390,79 @@ If you want the cleanest beginner path, follow this exact order:
 16. Check CloudWatch
 17. Run OWASP ZAP, Burp, and Wireshark evidence steps
 
-## 29. Local Test Commands
+## 29. Step 24: One-Page Master Checklist
+
+Use this as your do-not-skip checklist.
+
+### AWS preparation
+
+- AWS account created
+- IAM user created
+- AWS CLI configured
+- region chosen
+- VPC exists
+- 2 public subnets exist
+- Internet Gateway exists
+- route table makes subnets public
+- key pair created
+- AMI ID collected
+- public IP collected
+
+### Terraform preparation
+
+- `terraform.tfvars` created
+- VPC ID entered
+- subnet IDs entered
+- AMI entered
+- key pair entered
+- SSH CIDR entered
+
+### After Terraform
+
+- Blue public IP recorded
+- Green public IP recorded
+- ALB DNS recorded
+- listener ARN recorded
+- blue target group ARN recorded
+- green target group ARN recorded
+
+### Jenkins setup
+
+- Jenkins Ubuntu EC2 launched
+- port 8080 opened from your IP
+- Jenkins installed
+- Java installed
+- Git installed
+- Python installed
+- Ansible installed
+- AWS CLI installed
+- Docker installed or ZAP installed directly
+- `.pem` copied to Jenkins
+- `aws configure` completed on Jenkins
+
+### Ansible setup
+
+- inventory updated
+- SSH to Blue works
+- SSH to Green works
+- `setup_web.yml` executed successfully
+
+### Jenkins pipeline
+
+- GitHub repo connected
+- Jenkins parameters entered
+- pipeline succeeds
+- ALB URL works
+
+### Security and observability
+
+- CloudWatch log group visible
+- CloudWatch dashboard visible
+- ZAP report collected
+- Burp screenshots collected
+- Wireshark screenshots collected
+
+## 30. Local Test Commands
 
 ### Windows PowerShell
 
@@ -1000,7 +1474,7 @@ $env:PYTHONPATH="app"
 .\.venv\Scripts\python -m pytest -q app\tests
 ```
 
-## 30. Final Notes
+## 31. Final Notes
 
 - Terraform provisions the AWS infrastructure
 - Ansible configures Blue and Green
